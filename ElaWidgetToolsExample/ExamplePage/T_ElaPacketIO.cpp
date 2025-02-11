@@ -6,6 +6,7 @@
 #include "ElaXIO_Interface.h"
 #include "ElaXIO_PacketRegistry.h"
 #include <QApplication>
+#include <QDebug>
 #include <QElapsedTimer>
 T_ElaPacketIO::T_ElaPacketIO(QObject* parent)
     : QObject(parent)
@@ -33,7 +34,7 @@ void T_ElaPacketIO::handleGrabImage()
     CONNECT_HANDLE_FUNC_DEFINE(_interface, [this](ElaXIO_Connection* connection) {
         if (connection->isReliable())
         {
-            qDebug() << "Recv Link Message! ApplicationName: " << connection->getApplicationName();
+            qDebug() << "Recv Link Message! ApplicationName: " << QString::fromLocal8Bit(connection->getApplicationName().data());
             if (connection->getApplicationName() == "T_ElaPacketIO_Recv")
             {
                 _connection = connection;
@@ -41,7 +42,7 @@ void T_ElaPacketIO::handleGrabImage()
         }
     });
     DISCONNECT_HANDLE_FUNC_DEFINE(_interface, [this](ElaXIO_Connection* connection) {
-        qDebug() << "Recv DisConnect Message! ApplicationName: " << connection->getApplicationName();
+        qDebug() << "Recv DisConnect Message! ApplicationName: " << QString::fromLocal8Bit(connection->getApplicationName().data());
         if (connection->getApplicationName() == "T_ElaPacketIO_Recv")
         {
             _connection = nullptr;
@@ -93,7 +94,14 @@ void T_ElaPacketIO::handleGrabImage()
                 screenPkt._currentDataLen = dataTotalLen - i * 1024;
             }
             memcpy(screenPkt._data, imageData + screenPkt._dataOffset, 1024);
-            _connection->send(screenPkt);
+            if (_connection)
+            {
+                _connection->send(screenPkt);
+            }
+            else
+            {
+                break;
+            }
             //  和下面这句等效 但下方写法效率较低
             //  _interface->send(screenPkt, _interface->GetConnections()[0]);
         }
@@ -118,7 +126,7 @@ void T_ElaPacketIO::handleImagePacket()
     CONNECT_HANDLE_FUNC_DEFINE(_interface, [this](ElaXIO_Connection* connection) {
         if (connection->isReliable())
         {
-            qDebug() << "Recv Link Message! ApplicationName: " << connection->getApplicationName();
+            qDebug() << "Recv Link Message! ApplicationName: " << QString::fromLocal8Bit(connection->getApplicationName().data());
             if (connection->getApplicationName() == "T_ElaPacketIO_Send")
             {
                 _connection = connection;
