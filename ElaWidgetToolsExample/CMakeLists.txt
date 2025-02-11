@@ -104,44 +104,7 @@ if (MSVC)
         FILES $<TARGET_PDB_FILE:${PROJECT_NAME}>
         DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME} OPTIONAL)
 endif ()
-# QT依赖安装 只做Release安装 Debug自行打包
-install(FILES ${QT_SDK_DIR}/plugins/platforms/qwindows.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/platforms)
-install(FILES ${QT_SDK_DIR}/plugins/generic/qtuiotouchplugin.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/generic)
-install(FILES ${QT_SDK_DIR}/plugins/iconengines/qsvgicon.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/iconengines)
-install(
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qgif.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qicns.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qico.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qjpeg.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qpdf.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qsvg.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qtga.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qtiff.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qwbmp.dll
-    FILES ${QT_SDK_DIR}/plugins/imageformats/qwebp.dll
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/imageformats
-)
-install(FILES ${QT_SDK_DIR}/plugins/networkinformation/qnetworklistmanager.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/networkinformation)
-install(FILES ${QT_SDK_DIR}/plugins/platforminputcontexts/qtvirtualkeyboardplugin.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/platforminputcontexts)
-install(
-    FILES ${QT_SDK_DIR}/plugins/tls/qcertonlybackend.dll
-    FILES ${QT_SDK_DIR}/plugins/tls/qopensslbackend.dll
-    FILES ${QT_SDK_DIR}/plugins/tls/qschannelbackend.dll
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/tls
-)
-install(FILES ${QT_SDK_DIR}/plugins/styles/qwindowsvistastyle.dll DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/styles)
-FILE(GLOB TRANSLATIONS ${QT_SDK_DIR}/translations_install/*.qm)
-install(FILES ${TRANSLATIONS} DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/translations)
-install(
-    FILES ${QT_SDK_DIR}/bin/D3Dcompiler_47.dll
-    FILES ${QT_SDK_DIR}/bin/opengl32sw.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Widgets.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Core.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Gui.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Network.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Svg.dll
-    FILES ${QT_SDK_DIR}/bin/Qt6Xml.dll
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}
-)
 
-
+if (WIN32)
+    install(CODE "execute_process(COMMAND ${QT_DIR}/../../../bin/windeployqt.exe ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/${PROJECT_NAME}.exe)")
+endif ()

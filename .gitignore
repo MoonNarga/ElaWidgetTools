@@ -57,3 +57,9 @@ compile_commands.json
 /.idea
 *.clang-format
 /install
+
+# Product
+/build
+
+# Personal configuration
+config.cmake
