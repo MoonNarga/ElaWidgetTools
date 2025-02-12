@@ -130,7 +130,3 @@ if (WIN32)
         DESTINATION ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}
     )
 endif ()
-
-if (WIN32)
-    install(CODE "execute_process(COMMAND ${QT_DIR}/../../../bin/windeployqt.exe ${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/${PROJECT_NAME}.exe)")
-endif ()
