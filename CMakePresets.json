@@ -7,7 +7,7 @@
   },
   "configurePresets": [
     {
-      "name": "Release",
+      "name": "Default",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "installDir": "${sourceDir}/install/${presetName}",
@@ -15,17 +15,6 @@
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
         "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "RelWithDebInfo",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "installDir": "${sourceDir}/install/${presetName}",
-      "cacheVariables": {
-        "CMAKE_CXX_COMPILER": "cl",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "YES",
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
       }
     }
   ]
