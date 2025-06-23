@@ -53,13 +53,15 @@ compile_commands.json
 
 *_qmlcache.qrc
 
-# CLion
+# IDEs
 /.idea
+/.vscode
+/.vs
 *.clang-format
-/install
 
 # Product
 /build
+/install
 
 # Personal configuration
 config.cmake
