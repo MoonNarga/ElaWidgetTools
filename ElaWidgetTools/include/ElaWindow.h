@@ -5,7 +5,7 @@
 
 #include "Def.h"
 #include "ElaAppBar.h"
-#include "stdafx.h"
+
 class ElaWindowPrivate;
 class ELA_EXPORT ElaWindow : public QMainWindow
 {
@@ -18,7 +18,11 @@ class ELA_EXPORT ElaWindow : public QMainWindow
     Q_PROPERTY_CREATE_Q_H(int, CustomWidgetMaximumWidth)
     Q_PROPERTY_CREATE_Q_H(int, ThemeChangeTime)
     Q_PROPERTY_CREATE_Q_H(bool, IsCentralStackedWidgetTransparent)
+    Q_PROPERTY_CREATE_Q_H(bool, IsAllowPageOpenInNewWindow)
+    Q_PROPERTY_CREATE_Q_H(bool, IsNavigationBarEnable)
+    Q_PROPERTY_CREATE_Q_H(int, NavigationBarWidth)
     Q_PROPERTY_CREATE_Q_H(ElaNavigationType::NavigationDisplayMode, NavigationBarDisplayMode)
+    Q_PROPERTY_CREATE_Q_H(ElaWindowType::StackSwitchMode, StackSwitchMode)
     Q_TAKEOVER_NATIVEEVENT_H
 public:
     explicit ElaWindow(QWidget* parent = nullptr);
@@ -28,8 +32,6 @@ public:
 
     void setCustomWidget(ElaAppBarType::CustomArea customArea, QWidget* customWidget);
     QWidget* getCustomWidget() const;
-    void setIsNavigationBarEnable(bool isEnable);
-    bool getIsNavigationBarEnable() const;
     void setUserInfoCardVisible(bool isVisible);
     void setUserInfoCardPixmap(QPixmap pix);
     void setUserInfoCardTitle(QString title);
@@ -43,7 +45,11 @@ public:
     ElaNavigationType::NodeOperateReturnType addFooterNode(QString footerTitle, QString& footerKey, int keyPoints = 0, ElaIconType::IconName awesome = ElaIconType::None) const;
     ElaNavigationType::NodeOperateReturnType addFooterNode(QString footerTitle, QWidget* page, QString& footerKey, int keyPoints = 0, ElaIconType::IconName awesome = ElaIconType::None) const;
 
+    bool getNavigationNodeIsExpanded(QString expanderKey) const;
+    void expandNavigationNode(QString expanderKey);
+    void collpaseNavigationNode(QString expanderKey);
     void removeNavigationNode(QString nodeKey) const;
+    int getPageOpenInNewWindowCount(QString nodeKey) const;
 
     void setNodeKeyPoints(QString nodeKey, int keyPoints);
     int getNodeKeyPoints(QString nodeKey) const;
@@ -59,6 +65,7 @@ Q_SIGNALS:
     Q_SIGNAL void closeButtonClicked();
     Q_SIGNAL void navigationNodeClicked(ElaNavigationType::NavigationNodeType nodeType, QString nodeKey);
     Q_SIGNAL void customWidgetChanged();
+    Q_SIGNAL void pageOpenInNewWindow(QString nodeKey);
 
 protected:
     virtual bool eventFilter(QObject* watched, QEvent* event) override;

@@ -25,7 +25,9 @@
 #include "T_TableView.h"
 #include "T_TreeView.h"
 #ifdef Q_OS_WIN
+#include "ElaApplication.h"
 #include "ExamplePage/T_ElaScreen.h"
+#include <QTimer>
 #endif
 
 #include "ExamplePage/T_Home.h"
@@ -60,6 +62,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     //移动到中心
     moveToCenter();
+
+    //  如果你的windows版本低于Win11 调用原生Mica、Mica-Alt、Acrylic 会导致窗口绘制失效  Dwm_Blur仍可使用
+    //    eTheme->setThemeMode(ElaThemeType::Dark);
+    //    QTimer::singleShot(1, this, [=]() {
+    //        eApp->setWindowDisplayMode(ElaApplicationType::Mica);
+    //    });
 }
 
 MainWindow::~MainWindow()
@@ -69,7 +77,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::initWindow()
 {
-    // setIsEnableMica(true);
     // setIsCentralStackedWidgetTransparent(true);
     setWindowIcon(QIcon(":/include/Image/Cirno.jpg"));
     resize(1200, 740);
@@ -84,6 +91,7 @@ void MainWindow::initWindow()
     setWindowTitle("ElaWidgetTool");
     // setIsStayTop(true);
     // setUserInfoCardVisible(false);
+    // setNavigationBarWidth(260);
 }
 
 void MainWindow::initEdgeLayout()
@@ -234,6 +242,7 @@ void MainWindow::initContent()
     addPageNode("ElaListView", _listViewPage, _viewKey, 9, ElaIconType::List);
     addPageNode("ElaTableView", _tableViewPage, _viewKey, ElaIconType::Table);
     addPageNode("ElaTreeView", _treeViewPage, _viewKey, ElaIconType::ListTree);
+    expandNavigationNode(_viewKey);
 
     addPageNode("ElaGraphics", _graphicsPage, 9, ElaIconType::Paintbrush);
     addPageNode("ElaCard", _cardPage, ElaIconType::Cards);

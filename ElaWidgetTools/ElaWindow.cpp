@@ -1,17 +1,5 @@
 #include "ElaWindow.h"
 
-#include <QApplication>
-#include <QDockWidget>
-#include <QHBoxLayout>
-#include <QPropertyAnimation>
-#include <QResizeEvent>
-#include <QScreen>
-#include <QStackedWidget>
-#include <QStyleOption>
-#include <QTimer>
-#include <QToolBar>
-#include <QVBoxLayout>
-
 #include "ElaApplication.h"
 #include "ElaCentralStackedWidget.h"
 #include "ElaEventBus.h"
@@ -23,15 +11,27 @@
 #include "private/ElaAppBarPrivate.h"
 #include "private/ElaNavigationBarPrivate.h"
 #include "private/ElaWindowPrivate.h"
+#include <QApplication>
+#include <QDockWidget>
+#include <QHBoxLayout>
+#include <QPropertyAnimation>
+#include <QResizeEvent>
+#include <QScreen>
+#include <QStackedWidget>
+#include <QStyleOption>
+#include <QTimer>
+#include <QToolBar>
+#include <QVBoxLayout>
 Q_PROPERTY_CREATE_Q_CPP(ElaWindow, int, ThemeChangeTime)
 Q_PROPERTY_CREATE_Q_CPP(ElaWindow, ElaNavigationType::NavigationDisplayMode, NavigationBarDisplayMode)
+Q_PROPERTY_CREATE_Q_CPP(ElaWindow, ElaWindowType::StackSwitchMode, StackSwitchMode)
 Q_TAKEOVER_NATIVEEVENT_CPP(ElaWindow, d_func()->_appBar);
 ElaWindow::ElaWindow(QWidget* parent)
     : QMainWindow{parent}, d_ptr(new ElaWindowPrivate())
 {
     Q_D(ElaWindow);
     d->q_ptr = this;
-
+    d->_pStackSwitchMode = ElaWindowType::StackSwitchMode::Popup;
     setProperty("ElaBaseClassName", "ElaWindow");
     resize(1020, 680); // 默认宽高
 
@@ -56,17 +56,21 @@ ElaWindow::ElaWindow(QWidget* parent)
     connect(d->_navigationBar, &ElaNavigationBar::userInfoCardClicked, this, &ElaWindow::userInfoCardClicked);
     // 转发点击信号
     connect(d->_navigationBar, &ElaNavigationBar::navigationNodeClicked, this, &ElaWindow::navigationNodeClicked);
-    //跳转处理
+    // 跳转处理
     connect(d->_navigationBar, &ElaNavigationBar::navigationNodeClicked, d, &ElaWindowPrivate::onNavigationNodeClicked);
-    //新增窗口
+    // 新增窗口
     connect(d->_navigationBar, &ElaNavigationBar::navigationNodeAdded, d, &ElaWindowPrivate::onNavigationNodeAdded);
-    //移除窗口
+    // 移除窗口
     connect(d->_navigationBar, &ElaNavigationBar::navigationNodeRemoved, d, &ElaWindowPrivate::onNavigationNodeRemoved);
+    // 在新窗口打开
+    connect(d->_navigationBar, &ElaNavigationBar::pageOpenInNewWindow, this, &ElaWindow::pageOpenInNewWindow);
 
     // 中心堆栈窗口
     d->_centerStackedWidget = new ElaCentralStackedWidget(this);
     d->_centerStackedWidget->setContentsMargins(0, 0, 0, 0);
     QWidget* centralWidget = new QWidget(this);
+    centralWidget->setObjectName("ElaWindowCentralWidget");
+    centralWidget->setStyleSheet("#ElaWindowCentralWidget{background-color:transparent;}");
     d->_centerLayout = new QHBoxLayout(centralWidget);
     d->_centerLayout->setSpacing(0);
     d->_centerLayout->addWidget(d->_navigationBar);
@@ -87,7 +91,6 @@ ElaWindow::ElaWindow(QWidget* parent)
     d->_isInitFinished = true;
     setCentralWidget(centralWidget);
     centralWidget->installEventFilter(this);
-
     setObjectName("ElaWindow");
     setStyleSheet("#ElaWindow{background-color:transparent;}");
     setStyle(new ElaWindowStyle(style()));
@@ -98,14 +101,15 @@ ElaWindow::ElaWindow(QWidget* parent)
         palette.setBrush(QPalette::Window, ElaThemeColor(d->_themeMode, WindowBase));
         this->setPalette(palette);
     });
-    eApp->syncMica(this);
-    connect(eApp, &ElaApplication::pIsEnableMicaChanged, this, [=]() {
+    eApp->syncWindowDisplayMode(this);
+    connect(eApp, &ElaApplication::pWindowDisplayModeChanged, this, [=]() {
         d->onThemeModeChanged(d->_themeMode);
     });
 }
 
 ElaWindow::~ElaWindow()
 {
+    eApp->syncWindowDisplayMode(this, false);
 }
 
 void ElaWindow::setIsStayTop(bool isStayTop)
@@ -186,6 +190,32 @@ bool ElaWindow::getIsCentralStackedWidgetTransparent() const
 {
     Q_D(const ElaWindow);
     return d->_centerStackedWidget->getIsTransparent();
+}
+
+void ElaWindow::setIsAllowPageOpenInNewWindow(bool isAllowPageOpenInNewWindow)
+{
+    Q_D(ElaWindow);
+    d->_navigationBar->setIsAllowPageOpenInNewWindow(isAllowPageOpenInNewWindow);
+    Q_EMIT pIsAllowPageOpenInNewWindowChanged();
+}
+
+bool ElaWindow::getIsAllowPageOpenInNewWindow() const
+{
+    Q_D(const ElaWindow);
+    return d->_navigationBar->getIsAllowPageOpenInNewWindow();
+}
+
+void ElaWindow::setNavigationBarWidth(int navigationBarWidth)
+{
+    Q_D(ElaWindow);
+    d->_navigationBar->setNavigationBarWidth(navigationBarWidth);
+    Q_EMIT pNavigationBarWidthChanged();
+}
+
+int ElaWindow::getNavigationBarWidth() const
+{
+    Q_D(const ElaWindow);
+    return d->_navigationBar->getNavigationBarWidth();
 }
 
 void ElaWindow::moveToCenter()
@@ -295,10 +325,34 @@ ElaNavigationType::NodeOperateReturnType ElaWindow::addFooterNode(QString footer
     return d->_navigationBar->addFooterNode(footerTitle, page, footerKey, keyPoints, awesome);
 }
 
+bool ElaWindow::getNavigationNodeIsExpanded(QString expanderKey) const
+{
+    Q_D(const ElaWindow);
+    return d->_navigationBar->getNavigationNodeIsExpanded(expanderKey);
+}
+
+void ElaWindow::expandNavigationNode(QString expanderKey)
+{
+    Q_D(ElaWindow);
+    d->_navigationBar->expandNavigationNode(expanderKey);
+}
+
+void ElaWindow::collpaseNavigationNode(QString expanderKey)
+{
+    Q_D(ElaWindow);
+    d->_navigationBar->collpaseNavigationNode(expanderKey);
+}
+
 void ElaWindow::removeNavigationNode(QString nodeKey) const
 {
     Q_D(const ElaWindow);
     d->_navigationBar->removeNavigationNode(nodeKey);
+}
+
+int ElaWindow::getPageOpenInNewWindowCount(QString nodeKey) const
+{
+    Q_D(const ElaWindow);
+    return d->_navigationBar->getPageOpenInNewWindowCount(nodeKey);
 }
 
 void ElaWindow::setNodeKeyPoints(QString nodeKey, int keyPoints)

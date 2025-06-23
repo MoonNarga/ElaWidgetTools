@@ -53,11 +53,16 @@ void ElaNavigationBarPrivate::onNavigationOpenNewWindow(QString nodeKey)
     QWidget* widget = static_cast<QWidget*>(meta->newInstance());
     if (widget)
     {
+        _pageNewWindowCountMap[nodeKey] += 1;
         ElaCustomWidget* floatWidget = new ElaCustomWidget(q);
+        connect(floatWidget, &ElaCustomWidget::customWidgetClosed, this, [=]() {
+            _pageNewWindowCountMap[nodeKey] -= 1;
+        });
         floatWidget->setWindowIcon(widget->windowIcon());
         floatWidget->setWindowTitle(widget->windowTitle());
         floatWidget->setCentralWidget(widget);
         floatWidget->show();
+        Q_EMIT q->pageOpenInNewWindow(nodeKey);
     }
 }
 
@@ -65,10 +70,10 @@ void ElaNavigationBarPrivate::onNavigationRouteBack(QVariantMap routeData)
 {
     Q_Q(ElaNavigationBar);
     QString pageKey = routeData.value("ElaPageKey").toString();
-    q->navigation(pageKey, false);
+    q->navigation(pageKey, false, true);
 }
 
-void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool isLogRoute)
+void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool isLogRoute, bool isRouteBack)
 {
     Q_Q(ElaNavigationBar);
     if (index.isValid())
@@ -80,42 +85,7 @@ void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool i
         }
         if (node->getIsExpanderNode())
         {
-            if (_currentDisplayMode == ElaNavigationType::Compact)
-            {
-                if (node->getIsHasPageChild())
-                {
-                    //展开菜单
-                    ElaMenu* menu = _compactMenuMap.value(node);
-                    if (menu)
-                    {
-                        QPoint nodeTopRight = _navigationView->mapToGlobal(_navigationView->visualRect(node->getModelIndex()).topRight());
-                        menu->popup(QPoint(nodeTopRight.x() + 10, nodeTopRight.y()));
-                    }
-                }
-            }
-            else
-            {
-                if (node->getIsHasChild())
-                {
-                    QVariantMap data;
-                    if (_navigationView->isExpanded(index))
-                    {
-                        // 收起
-                        data.insert("Collapse", QVariant::fromValue(node));
-                        node->setIsExpanded(false);
-                        _navigationView->navigationNodeStateChange(data);
-                        _navigationView->collapse(index);
-                    }
-                    else
-                    {
-                        // 展开
-                        data.insert("Expand", QVariant::fromValue(node));
-                        node->setIsExpanded(true);
-                        _navigationView->navigationNodeStateChange(data);
-                        _navigationView->expand(index);
-                    }
-                }
-            }
+            _expandOrCollpaseExpanderNode(node, !_navigationView->isExpanded(index));
         }
         else
         {
@@ -146,7 +116,7 @@ void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool i
                     routeData.insert("ElaPageKey", pageKey);
                     ElaNavigationRouter::getInstance()->navigationRoute(this, "onNavigationRouteBack", routeData);
                 }
-                Q_EMIT q->navigationNodeClicked(ElaNavigationType::PageNode, node->getNodeKey());
+                Q_EMIT q->navigationNodeClicked(ElaNavigationType::PageNode, node->getNodeKey(), isRouteBack);
 
                 if (_footerModel->getSelectedNode())
                 {
@@ -203,7 +173,7 @@ void ElaNavigationBarPrivate::onTreeViewClicked(const QModelIndex& index, bool i
     }
 }
 
-void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool isLogRoute)
+void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool isLogRoute, bool isRouteBack)
 {
     Q_Q(ElaNavigationBar);
     ElaNavigationNode* node = index.data(Qt::UserRole).value<ElaNavigationNode*>();
@@ -235,7 +205,7 @@ void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool
             routeData.insert("ElaPageKey", pageKey);
             ElaNavigationRouter::getInstance()->navigationRoute(this, "onNavigationRouteBack", routeData);
         }
-        Q_EMIT q->navigationNodeClicked(ElaNavigationType::FooterNode, node->getNodeKey());
+        Q_EMIT q->navigationNodeClicked(ElaNavigationType::FooterNode, node->getNodeKey(), isRouteBack);
 
         if (node->getIsHasFooterPage())
         {
@@ -258,6 +228,21 @@ void ElaNavigationBarPrivate::onFooterViewClicked(const QModelIndex& index, bool
             postData.insert("SelectedNode", QVariant::fromValue(node));
             _footerDelegate->navigationNodeStateChange(postData);
             _footerModel->setSelectedNode(node);
+        }
+    }
+}
+
+void ElaNavigationBarPrivate::_initNodeModelIndex(const QModelIndex& parentIndex)
+{
+    int rowCount = _navigationModel->rowCount(parentIndex);
+    for (int row = 0; row < rowCount; ++row)
+    {
+        QModelIndex index = _navigationModel->index(row, 0, parentIndex);
+        ElaNavigationNode* childNode = static_cast<ElaNavigationNode*>(index.internalPointer());
+        childNode->setModelIndex(index);
+        if (_navigationModel->hasChildren(index))
+        {
+            _initNodeModelIndex(index);
         }
     }
 }
@@ -338,17 +323,44 @@ void ElaNavigationBarPrivate::_expandSelectedNodeParent()
     }
 }
 
-void ElaNavigationBarPrivate::_initNodeModelIndex(const QModelIndex& parentIndex)
+void ElaNavigationBarPrivate::_expandOrCollpaseExpanderNode(ElaNavigationNode* node, bool isExpand)
 {
-    int rowCount = _navigationModel->rowCount(parentIndex);
-    for (int row = 0; row < rowCount; ++row)
+    if (_currentDisplayMode == ElaNavigationType::Compact)
     {
-        QModelIndex index = _navigationModel->index(row, 0, parentIndex);
-        ElaNavigationNode* childNode = static_cast<ElaNavigationNode*>(index.internalPointer());
-        childNode->setModelIndex(index);
-        if (_navigationModel->hasChildren(index))
+        if (node->getIsHasPageChild())
         {
-            _initNodeModelIndex(index);
+            //展开菜单
+            ElaMenu* menu = _compactMenuMap.value(node);
+            if (menu)
+            {
+                QPoint nodeTopRight = _navigationView->mapToGlobal(_navigationView->visualRect(node->getModelIndex()).topRight());
+                menu->popup(QPoint(nodeTopRight.x() + 10, nodeTopRight.y()));
+            }
+        }
+    }
+    else
+    {
+        QModelIndex index = node->getModelIndex();
+        bool isExpanded = _navigationView->isExpanded(index);
+        if (node->getIsHasChild() && isExpand != isExpanded)
+        {
+            QVariantMap data;
+            if (isExpanded)
+            {
+                // 收起
+                data.insert("Collapse", QVariant::fromValue(node));
+                node->setIsExpanded(isExpand);
+                _navigationView->navigationNodeStateChange(data);
+                _navigationView->collapse(index);
+            }
+            else
+            {
+                // 展开
+                data.insert("Expand", QVariant::fromValue(node));
+                node->setIsExpanded(true);
+                _navigationView->navigationNodeStateChange(data);
+                _navigationView->expand(index);
+            }
         }
     }
 }
@@ -459,10 +471,10 @@ void ElaNavigationBarPrivate::_handleNavigationExpandState(bool isSave)
     }
     else
     {
+        // 修正动画覆盖
+        _navigationView->resize(_pNavigationBarWidth - 5, _navigationView->height());
         for (auto node: _lastExpandedNodesList)
         {
-            // 修正动画覆盖
-            _navigationView->resize(295, _navigationView->height());
             onTreeViewClicked(node->getModelIndex(), false);
         }
     }
@@ -570,7 +582,7 @@ void ElaNavigationBarPrivate::_doNavigationBarWidthAnimation(ElaNavigationType::
         connect(navigationBarWidthAnimation, &QPropertyAnimation::valueChanged, this, [=](const QVariant& value) {
             q->setFixedWidth(value.toUInt());
         });
-        navigationBarWidthAnimation->setEndValue(300);
+        navigationBarWidthAnimation->setEndValue(_pNavigationBarWidth);
         break;
     }
     default:
